@@ -73,6 +73,9 @@ button:hover {
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -101,12 +104,16 @@ p {
 }
 
 .tabs {
+  position: sticky;
+  top: 89px;
+  z-index: 29;
   display: flex;
   gap: 4px;
   padding: 10px 28px 0;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
+  box-shadow: 0 8px 18px rgba(20, 32, 45, 0.06);
 }
 
 .tab {
@@ -454,6 +461,7 @@ textarea {
 
   .tabs {
     padding-left: 14px;
+    top: 146px;
   }
 
   .metrics,
