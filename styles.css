@@ -63,6 +63,15 @@ button:hover {
   border-color: var(--accent);
 }
 
+.danger-button {
+  border-color: color-mix(in srgb, var(--danger) 42%, var(--line));
+  color: var(--danger);
+}
+
+.danger-button:hover {
+  border-color: var(--danger);
+}
+
 .topbar {
   display: flex;
   align-items: center;

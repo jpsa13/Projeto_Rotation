@@ -221,6 +221,12 @@ function recalculatePendingSuggestions(state) {
 }
 
 function generateUpcoming(state, count = 24) {
+  const now = new Date();
+  state.events = state.events.filter((event) => {
+    const isPastPending = event.status === "pending" && new Date(event.spawnAt) <= now;
+    return !isPastPending;
+  });
+
   const activeBosses = state.bosses.filter((boss) => boss.active);
   const existingKeys = new Set(state.events.map((event) => `${event.bossId}|${event.spawnAt}`));
   const latestByBoss = Object.fromEntries(activeBosses.map((boss) => [boss.id, null]));
