@@ -103,6 +103,18 @@ p {
   flex-wrap: wrap;
 }
 
+.admin-only {
+  display: none;
+}
+
+body.admin .admin-only {
+  display: inline-flex;
+}
+
+body.admin .admin-only.table-control {
+  display: block;
+}
+
 .tabs {
   position: sticky;
   top: 89px;

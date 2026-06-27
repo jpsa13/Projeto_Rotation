@@ -1,15 +1,50 @@
 const THEME_KEY = "rf-next-rotation-theme";
+const ADMIN_TOKEN_KEY = "rf-next-rotation-admin-token";
 
 let state = { bosses: [], guilds: [], events: [], scores: { blockScores: { BR: 0, INT: 0 }, guildScores: {}, countedEvents: 0 }, statuses: [], blocks: [] };
+let adminToken = localStorage.getItem(ADMIN_TOKEN_KEY) || "";
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+      ...(options.headers || {}),
+    },
     ...options,
   });
-  if (!response.ok) throw new Error(await response.text());
+  if (!response.ok) {
+    const message = await response.text();
+    if (response.status === 401) clearAdmin();
+    alert(response.status === 401 ? "Admin login required." : message);
+    throw new Error(message);
+  }
   state = await response.json();
   render();
+}
+
+async function adminLogin() {
+  const password = prompt("Admin password");
+  if (!password) return;
+  const response = await fetch("/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) {
+    alert(await response.text());
+    return;
+  }
+  const data = await response.json();
+  adminToken = data.token;
+  localStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
+  applyAdminMode();
+}
+
+function clearAdmin() {
+  adminToken = "";
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  applyAdminMode();
 }
 
 function toLocalInputValue(value) {
@@ -84,6 +119,7 @@ function makeSelect(options, value, onChange, placeholder = "") {
   if (placeholder) select.append(new Option(placeholder, ""));
   options.forEach((option) => select.append(new Option(option.label, option.value)));
   select.value = value || "";
+  select.disabled = !isAdmin();
   select.addEventListener("change", () => onChange(select.value));
   return select;
 }
@@ -92,6 +128,7 @@ function makeInput(type, value, onChange) {
   const input = document.createElement("input");
   input.type = type;
   input.value = type === "datetime-local" ? toLocalInputValue(value) : value ?? "";
+  input.disabled = !isAdmin();
   if (type === "checkbox") {
     input.className = "checkbox";
     input.checked = Boolean(value);
@@ -131,6 +168,7 @@ function makeGuildButtons(row) {
       button.className = `guild-choice${row.realGuildId === guild.id ? " active" : ""}`;
       button.textContent = guild.name;
       button.title = `${guild.block} - ${guild.name}`;
+      button.disabled = !isAdmin();
       button.addEventListener("click", () => updateEvent(row.id, { realGuildId: row.realGuildId === guild.id ? "" : guild.id }));
       wrap.append(button);
     });
@@ -145,6 +183,7 @@ function makeTeamButtons(row) {
     button.type = "button";
     button.className = `team-choice${row.realBlock === block ? " active" : ""}`;
     button.textContent = block;
+    button.disabled = !isAdmin();
     button.addEventListener("click", () => updateEvent(row.id, { realBlock: row.realBlock === block ? "" : block }));
     wrap.append(button);
   });
@@ -287,28 +326,32 @@ function renderSummary() {
 function renderNext() {
   const root = document.querySelector("#next");
   root.innerHTML = `<div class="section-head"><div><h2>Upcoming</h2><p>Generate future events and assign owners from the current real loot history.</p></div></div>`;
-  const toolbar = document.createElement("div");
-  toolbar.className = "toolbar";
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = "Generate upcoming events";
-  button.addEventListener("click", () => generateUpcoming(24));
-  toolbar.append(button);
-  root.append(toolbar);
+  if (isAdmin()) {
+    const toolbar = document.createElement("div");
+    toolbar.className = "toolbar";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Generate upcoming events";
+    button.addEventListener("click", () => generateUpcoming(24));
+    toolbar.append(button);
+    root.append(toolbar);
+  }
   renderEventsTable(root, state.events.filter((event) => event.status === "pending" && new Date(event.spawnAt) > new Date()).slice(0, 30));
 }
 
 function renderEvents() {
   const root = document.querySelector("#events");
   root.innerHTML = `<div class="section-head"><div><h2>Events</h2><p>Set the real looter here. Corrections become the source of truth for future suggestions.</p></div></div>`;
-  const toolbar = document.createElement("div");
-  toolbar.className = "toolbar";
-  const atlasButton = document.createElement("button");
-  atlasButton.type = "button";
-  atlasButton.textContent = "Add Atlas 08:40 events";
-  atlasButton.addEventListener("click", () => addAtlasSeedEvents());
-  toolbar.append(atlasButton);
-  root.append(toolbar);
+  if (isAdmin()) {
+    const toolbar = document.createElement("div");
+    toolbar.className = "toolbar";
+    const atlasButton = document.createElement("button");
+    atlasButton.type = "button";
+    atlasButton.textContent = "Add Atlas 08:40 events";
+    atlasButton.addEventListener("click", () => addAtlasSeedEvents());
+    toolbar.append(atlasButton);
+    root.append(toolbar);
+  }
   renderEventsTable(root, state.events);
 }
 
@@ -331,6 +374,7 @@ function renderEventsTable(root, events) {
     { label: "Note", render: (row) => {
       const input = document.createElement("textarea");
       input.value = row.note || "";
+      input.disabled = !isAdmin();
       input.addEventListener("change", () => updateEvent(row.id, { note: input.value }));
       return input;
     }},
@@ -387,6 +431,15 @@ function applyTheme(theme) {
   localStorage.setItem(THEME_KEY, theme);
 }
 
+function isAdmin() {
+  return Boolean(adminToken);
+}
+
+function applyAdminMode() {
+  document.body.classList.toggle("admin", isAdmin());
+  document.querySelector("#adminBtn").style.display = isAdmin() ? "none" : "inline-flex";
+}
+
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab, .panel").forEach((item) => item.classList.remove("active"));
@@ -399,6 +452,9 @@ document.querySelector("#themeBtn").addEventListener("click", () => {
   applyTheme(document.body.classList.contains("dark") ? "light" : "dark");
 });
 
+document.querySelector("#adminBtn").addEventListener("click", adminLogin);
+document.querySelector("#logoutBtn").addEventListener("click", clearAdmin);
+
 document.querySelector("#seedBtn").addEventListener("click", () => {
   if (confirm("Reset seed data and delete saved events?")) api("/api/reset", { method: "POST" });
 });
@@ -409,5 +465,6 @@ document.querySelector("#exportBtn").addEventListener("click", async () => {
 });
 
 applyTheme(localStorage.getItem(THEME_KEY) || "light");
+applyAdminMode();
 api("/api/state");
 setInterval(() => render(), 30000);

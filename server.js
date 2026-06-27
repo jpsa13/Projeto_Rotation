@@ -8,6 +8,8 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "rotation.json");
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || `local-${Math.random().toString(36).slice(2)}`;
 const SERVER_UTC_OFFSET_HOURS = 3;
 
 const blocks = ["BR", "INT"];
@@ -303,25 +305,38 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(__dirname));
 
+function requireAdmin(req, res, next) {
+  const auth = req.get("authorization") || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+  if (token && token === ADMIN_TOKEN) return next();
+  return res.status(401).json({ error: "Admin login required" });
+}
+
 app.get("/api/state", (req, res) => {
   res.json(publicState(readState()));
 });
 
-app.post("/api/events/generate", (req, res) => {
+app.post("/api/admin/login", (req, res) => {
+  if (!ADMIN_PASSWORD) return res.status(503).json({ error: "ADMIN_PASSWORD is not configured" });
+  if (req.body.password !== ADMIN_PASSWORD) return res.status(401).json({ error: "Invalid password" });
+  res.json({ token: ADMIN_TOKEN });
+});
+
+app.post("/api/events/generate", requireAdmin, (req, res) => {
   const state = readState();
   generateUpcoming(state, Number(req.body.count || 24));
   writeState(state);
   res.json(publicState(state));
 });
 
-app.post("/api/events/add-atlas-seed", (req, res) => {
+app.post("/api/events/add-atlas-seed", requireAdmin, (req, res) => {
   const state = readState();
   addAtlasSeedEvents(state);
   writeState(state);
   res.json(publicState(state));
 });
 
-app.patch("/api/events/:id", (req, res) => {
+app.patch("/api/events/:id", requireAdmin, (req, res) => {
   const state = readState();
   const event = state.events.find((item) => item.id === req.params.id);
   if (!event) return res.status(404).json({ error: "Event not found" });
@@ -338,7 +353,7 @@ app.patch("/api/events/:id", (req, res) => {
   res.json(publicState(state));
 });
 
-app.patch("/api/bosses/:id", (req, res) => {
+app.patch("/api/bosses/:id", requireAdmin, (req, res) => {
   const state = readState();
   const boss = state.bosses.find((item) => item.id === req.params.id);
   if (!boss) return res.status(404).json({ error: "Boss not found" });
@@ -351,7 +366,7 @@ app.patch("/api/bosses/:id", (req, res) => {
   res.json(publicState(state));
 });
 
-app.patch("/api/guilds/:id", (req, res) => {
+app.patch("/api/guilds/:id", requireAdmin, (req, res) => {
   const state = readState();
   const guild = state.guilds.find((item) => item.id === req.params.id);
   if (!guild) return res.status(404).json({ error: "Guild not found" });
@@ -364,7 +379,7 @@ app.patch("/api/guilds/:id", (req, res) => {
   res.json(publicState(state));
 });
 
-app.post("/api/reset", (req, res) => {
+app.post("/api/reset", requireAdmin, (req, res) => {
   const state = seedState();
   writeState(state);
   res.json(publicState(state));

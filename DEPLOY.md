@@ -32,6 +32,7 @@ http://localhost:3000
 
 ```text
 DATA_DIR=/app/data
+ADMIN_PASSWORD=choose-a-strong-password
 ```
 
 The public browser API does not include boss weights or guild priorities. Those stay server-side.
