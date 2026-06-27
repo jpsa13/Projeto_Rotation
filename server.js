@@ -312,13 +312,19 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ error: "Admin login required" });
 }
 
+function normalizeSecret(value) {
+  return String(value || "").trim().replace(/^['"]|['"]$/g, "");
+}
+
 app.get("/api/state", (req, res) => {
   res.json(publicState(readState()));
 });
 
 app.post("/api/admin/login", (req, res) => {
   if (!ADMIN_PASSWORD) return res.status(503).json({ error: "ADMIN_PASSWORD is not configured" });
-  if (req.body.password !== ADMIN_PASSWORD) return res.status(401).json({ error: "Invalid password" });
+  if (normalizeSecret(req.body.password) !== normalizeSecret(ADMIN_PASSWORD)) {
+    return res.status(401).json({ error: "Invalid password" });
+  }
   res.json({ token: ADMIN_TOKEN });
 });
 
