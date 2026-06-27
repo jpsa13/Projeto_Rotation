@@ -398,6 +398,13 @@ textarea {
   min-width: 420px;
 }
 
+.team-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(74px, 1fr));
+  gap: 6px;
+  min-width: 160px;
+}
+
 .guild-choice {
   padding: 7px 8px;
   background: var(--choice-bg);
@@ -405,7 +412,15 @@ textarea {
   min-width: 128px;
 }
 
-.guild-choice.active {
+.team-choice {
+  padding: 7px 8px;
+  background: var(--choice-bg);
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.guild-choice.active,
+.team-choice.active {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;

@@ -288,7 +288,7 @@ app.patch("/api/events/:id", (req, res) => {
   Object.assign(event, req.body);
   if (Object.prototype.hasOwnProperty.call(req.body, "realGuildId")) {
     const guild = state.guilds.find((item) => item.id === req.body.realGuildId);
-    event.realBlock = guild?.block || "";
+    event.realBlock = guild?.block || event.realBlock || "";
   }
   if (event.realGuildId && event.realGuildId !== event.suggestedGuildId && event.status === "confirmed") {
     event.status = "corrected";

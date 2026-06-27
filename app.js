@@ -119,6 +119,20 @@ function makeGuildButtons(row) {
   return wrap;
 }
 
+function makeTeamButtons(row) {
+  const wrap = document.createElement("div");
+  wrap.className = "team-buttons";
+  state.blocks.forEach((block) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `team-choice${row.realBlock === block ? " active" : ""}`;
+    button.textContent = block;
+    button.addEventListener("click", () => updateEvent(row.id, { realBlock: row.realBlock === block ? "" : block }));
+    wrap.append(button);
+  });
+  return wrap;
+}
+
 function groupKey(group) {
   if (group === "Atlas Boss Group") return "atlas";
   if (group.includes("Group B")) return "b";
@@ -284,6 +298,7 @@ function renderEventsTable(root, events) {
     { label: "Level", render: (row) => levelChip(row) },
     { label: "Group", render: (row) => groupBadge(getBoss(row.bossId)?.group || "-") },
     { label: "Suggested", render: (row) => `${row.suggestedBlock} - ${getGuild(row.suggestedGuildId)?.name || "-"}` },
+    { label: "Real team", render: (row) => makeTeamButtons(row) },
     { label: "Real loot", render: (row) => makeGuildButtons(row) },
     { label: "Status", render: (row) => makeSelect(state.statuses.map((status) => ({ label: titleCase(status), value: status })), row.status, (value) => updateEvent(row.id, { status: value })) },
     { label: "Count", render: (row) => makeInput("checkbox", row.counted, (value) => updateEvent(row.id, { counted: value })) },
