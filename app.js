@@ -75,6 +75,10 @@ function generateUpcoming(count = 24) {
   return api("/api/events/generate", { method: "POST", body: JSON.stringify({ count }) });
 }
 
+function addAtlasSeedEvents() {
+  return api("/api/events/add-atlas-seed", { method: "POST" });
+}
+
 function makeSelect(options, value, onChange, placeholder = "") {
   const select = document.createElement("select");
   if (placeholder) select.append(new Option(placeholder, ""));
@@ -283,6 +287,14 @@ function renderNext() {
 function renderEvents() {
   const root = document.querySelector("#events");
   root.innerHTML = `<div class="section-head"><div><h2>Events</h2><p>Set the real looter here. Corrections become the source of truth for future suggestions.</p></div></div>`;
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  const atlasButton = document.createElement("button");
+  atlasButton.type = "button";
+  atlasButton.textContent = "Add Atlas 08:40 events";
+  atlasButton.addEventListener("click", () => addAtlasSeedEvents());
+  toolbar.append(atlasButton);
+  root.append(toolbar);
   renderEventsTable(root, state.events);
 }
 

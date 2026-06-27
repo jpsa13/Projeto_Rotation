@@ -266,6 +266,37 @@ function generateUpcoming(state, count = 24) {
   return created;
 }
 
+function addAtlasSeedEvents(state) {
+  const atlasBosses = state.bosses.filter((boss) => boss.group === "Atlas Boss Group");
+  const existingKeys = new Set(state.events.map((event) => `${event.bossId}|${atlasInitialSpawn}`));
+  const simulationEvents = [...state.events].sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
+  const created = [];
+
+  atlasBosses.forEach((boss) => {
+    if (existingKeys.has(`${boss.id}|${atlasInitialSpawn}`)) return;
+    const suggestion = suggestOwnerFromScores(state, calculateScores(state, simulationEvents));
+    const event = {
+      id: `event-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      spawnAt: atlasInitialSpawn,
+      bossId: boss.id,
+      suggestedBlock: suggestion.block,
+      suggestedGuildId: suggestion.guild?.id || "",
+      realBlock: "",
+      realGuildId: "",
+      status: "pending",
+      counted: true,
+      note: "Recovered Atlas 08:40 seed event",
+    };
+    simulationEvents.push({ ...event, realBlock: event.suggestedBlock, realGuildId: event.suggestedGuildId, status: "confirmed" });
+    created.push(event);
+  });
+
+  state.events.push(...created);
+  state.events.sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
+  recalculatePendingSuggestions(state);
+  return created;
+}
+
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(__dirname));
@@ -277,6 +308,13 @@ app.get("/api/state", (req, res) => {
 app.post("/api/events/generate", (req, res) => {
   const state = readState();
   generateUpcoming(state, Number(req.body.count || 24));
+  writeState(state);
+  res.json(publicState(state));
+});
+
+app.post("/api/events/add-atlas-seed", (req, res) => {
+  const state = readState();
+  addAtlasSeedEvents(state);
   writeState(state);
   res.json(publicState(state));
 });
