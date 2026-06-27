@@ -177,6 +177,7 @@ function serverDailyAt(time) {
 
 function addNextCandidate(state, candidates, existingKeys, latestByBoss, boss) {
   let next;
+  const now = new Date();
   if (boss.spawnType === "fixed") {
     next = latestByBoss[boss.id]
       ? new Date(new Date(latestByBoss[boss.id]).getTime() + 24 * 60 * 60 * 1000)
@@ -186,7 +187,12 @@ function addNextCandidate(state, candidates, existingKeys, latestByBoss, boss) {
   } else if (boss.initialNextAt) {
     next = new Date(boss.initialNextAt);
   } else {
-    next = new Date(Date.now() + Number(boss.respawnHours || 0) * 60 * 60 * 1000);
+    next = new Date(now.getTime() + Number(boss.respawnHours || 0) * 60 * 60 * 1000);
+  }
+
+  if (boss.spawnType === "interval" && Number(boss.respawnHours || 0) > 0) {
+    const stepMs = Number(boss.respawnHours) * 60 * 60 * 1000;
+    while (next < now) next = new Date(next.getTime() + stepMs);
   }
 
   while (existingKeys.has(`${boss.id}|${next.toISOString()}`)) {
