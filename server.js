@@ -277,7 +277,7 @@ function generateUpcoming(state, count = 24) {
 function addAtlasSeedEvents(state) {
   const atlasBossIds = new Set(["mecha-lapis", "mecha-silex", "mecha-nyoka"]);
   const atlasBosses = state.bosses.filter((boss) => atlasBossIds.has(boss.id));
-  const existingKeys = new Set(state.events.map((event) => `${event.bossId}|${atlasInitialSpawn}`));
+  const existingKeys = new Set(state.events.map((event) => `${event.bossId}|${event.spawnAt}`));
   const simulationEvents = [...state.events].sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
   const created = [];
 
