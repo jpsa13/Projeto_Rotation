@@ -400,9 +400,9 @@ textarea {
 
 .team-buttons {
   display: grid;
-  grid-template-columns: repeat(2, minmax(74px, 1fr));
+  grid-template-columns: minmax(74px, 1fr);
   gap: 6px;
-  min-width: 160px;
+  min-width: 82px;
 }
 
 .guild-choice {

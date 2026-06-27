@@ -87,6 +87,7 @@ function writeState(state) {
 
 function publicBoss(boss) {
   const { weight, ...visible } = boss;
+  visible.group = visible.group.replace(/^Novus\s+/, "");
   return visible;
 }
 
