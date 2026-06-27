@@ -263,7 +263,7 @@ function renderNext() {
   button.addEventListener("click", () => generateUpcoming(24));
   toolbar.append(button);
   root.append(toolbar);
-  renderEventsTable(root, state.events.filter((event) => event.status === "pending").slice(0, 30));
+  renderEventsTable(root, state.events.filter((event) => event.status === "pending" && new Date(event.spawnAt) > new Date()).slice(0, 30));
 }
 
 function renderEvents() {
