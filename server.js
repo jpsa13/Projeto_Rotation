@@ -10,6 +10,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "rotation.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ADMIN_PASSWORD;
+const APP_VERSION = "2026-06-27-atlas-recovery-v2";
 const SERVER_UTC_OFFSET_HOURS = 3;
 
 const blocks = ["BR", "INT"];
@@ -100,15 +101,17 @@ function publicGuild(guild) {
   return visible;
 }
 
-function publicState(state) {
+function publicState(state, meta = {}) {
   const scores = calculateScores(state);
   return {
+    appVersion: APP_VERSION,
     bosses: state.bosses.map(publicBoss),
     guilds: state.guilds.map(publicGuild),
     events: state.events,
     scores,
     statuses,
     blocks,
+    meta,
   };
 }
 
@@ -343,6 +346,7 @@ app.get("/api/health", route((req, res) => {
 
   res.json({
     ok: true,
+    appVersion: APP_VERSION,
     dataDir: DATA_DIR,
     dataFile: DATA_FILE,
     dataFileExists: fs.existsSync(DATA_FILE),
@@ -372,9 +376,9 @@ app.post("/api/events/generate", requireAdmin, route((req, res) => {
 
 app.post("/api/events/add-atlas-seed", requireAdmin, route((req, res) => {
   const state = readState();
-  addAtlasSeedEvents(state);
+  const created = addAtlasSeedEvents(state);
   writeState(state);
-  res.json(publicState(state));
+  res.json(publicState(state, { message: `Added ${created.length} Atlas 08:40 event(s).` }));
 }));
 
 app.patch("/api/events/:id", requireAdmin, route((req, res) => {

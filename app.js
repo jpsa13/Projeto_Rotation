@@ -21,6 +21,7 @@ async function api(path, options = {}) {
     throw new Error(message);
   }
   state = await response.json();
+  if (state.meta?.message) alert(state.meta.message);
   render();
 }
 
