@@ -105,6 +105,20 @@ function makeInput(type, value, onChange) {
   return input;
 }
 
+function makeDateTimeStack(value, onChange) {
+  const wrap = document.createElement("div");
+  wrap.className = "datetime-stack";
+  const current = toLocalInputValue(value);
+  const dateInput = makeInput("date", current.slice(0, 10), (date) => {
+    onChange(fromLocalInputValue(`${date}T${current.slice(11, 16) || "00:00"}`));
+  });
+  const timeInput = makeInput("time", current.slice(11, 16), (time) => {
+    onChange(fromLocalInputValue(`${current.slice(0, 10)}T${time}`));
+  });
+  wrap.append(dateInput, timeInput);
+  return wrap;
+}
+
 function makeGuildButtons(row) {
   const wrap = document.createElement("div");
   wrap.className = "guild-buttons";
@@ -304,8 +318,8 @@ function renderEventsTable(root, events) {
     return;
   }
   renderTable(root, [
-    { label: "Spawn", render: (row) => makeInput("datetime-local", row.spawnAt, (value) => updateEvent(row.id, { spawnAt: value })) },
-    { label: "Local respawn", render: (row) => spawnTimeDisplay(row.spawnAt) },
+    { label: "Spawn", render: (row) => makeDateTimeStack(row.spawnAt, (value) => updateEvent(row.id, { spawnAt: value })) },
+    { label: "Respawn", render: (row) => spawnTimeDisplay(row.spawnAt) },
     { label: "Boss", render: (row) => getBoss(row.bossId)?.name || row.bossId },
     { label: "Level", render: (row) => levelChip(row) },
     { label: "Group", render: (row) => groupBadge(getBoss(row.bossId)?.group || "-") },
