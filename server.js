@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "rotation.json");
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || `local-${Math.random().toString(36).slice(2)}`;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || ADMIN_PASSWORD;
 const SERVER_UTC_OFFSET_HOURS = 3;
 
 const blocks = ["BR", "INT"];

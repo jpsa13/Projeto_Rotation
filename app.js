@@ -1,5 +1,6 @@
 const THEME_KEY = "rf-next-rotation-theme";
 const ADMIN_TOKEN_KEY = "rf-next-rotation-admin-token";
+const ACTIVE_TAB_KEY = "rf-next-rotation-active-tab";
 
 let state = { bosses: [], guilds: [], events: [], scores: { blockScores: { BR: 0, INT: 0 }, guildScores: {}, countedEvents: 0 }, statuses: [], blocks: [] };
 let adminToken = localStorage.getItem(ADMIN_TOKEN_KEY) || "";
@@ -45,6 +46,20 @@ function clearAdmin() {
   adminToken = "";
   localStorage.removeItem(ADMIN_TOKEN_KEY);
   applyAdminMode();
+}
+
+function activeTabId() {
+  return localStorage.getItem(ACTIVE_TAB_KEY) || "summary";
+}
+
+function setActiveTab(tabId) {
+  document.querySelectorAll(".tab, .panel").forEach((item) => item.classList.remove("active"));
+  const tab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+  const panel = document.querySelector(`#${tabId}`);
+  if (!tab || !panel) return setActiveTab("summary");
+  tab.classList.add("active");
+  panel.classList.add("active");
+  localStorage.setItem(ACTIVE_TAB_KEY, tabId);
 }
 
 function toLocalInputValue(value) {
@@ -442,9 +457,7 @@ function applyAdminMode() {
 
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab, .panel").forEach((item) => item.classList.remove("active"));
-    tab.classList.add("active");
-    document.querySelector(`#${tab.dataset.tab}`).classList.add("active");
+    setActiveTab(tab.dataset.tab);
   });
 });
 
@@ -466,5 +479,6 @@ document.querySelector("#exportBtn").addEventListener("click", async () => {
 
 applyTheme(localStorage.getItem(THEME_KEY) || "light");
 applyAdminMode();
+setActiveTab(activeTabId());
 api("/api/state");
 setInterval(() => render(), 30000);
