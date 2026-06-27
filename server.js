@@ -84,7 +84,9 @@ function readState() {
 
 function writeState(state) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
+  const tempFile = `${DATA_FILE}.tmp`;
+  fs.writeFileSync(tempFile, JSON.stringify(state, null, 2));
+  fs.renameSync(tempFile, DATA_FILE);
 }
 
 function publicBoss(boss) {
@@ -305,6 +307,16 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(__dirname));
 
+function route(handler) {
+  return (req, res, next) => {
+    try {
+      handler(req, res, next);
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
 function requireAdmin(req, res, next) {
   const auth = req.get("authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
@@ -316,33 +328,56 @@ function normalizeSecret(value) {
   return String(value || "").trim().replace(/^['"]|['"]$/g, "");
 }
 
-app.get("/api/state", (req, res) => {
-  res.json(publicState(readState()));
-});
+app.get("/api/health", route((req, res) => {
+  let writable = false;
+  let writeError = "";
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    const probe = path.join(DATA_DIR, ".write-test");
+    fs.writeFileSync(probe, String(Date.now()));
+    fs.unlinkSync(probe);
+    writable = true;
+  } catch (error) {
+    writeError = error.message;
+  }
 
-app.post("/api/admin/login", (req, res) => {
+  res.json({
+    ok: true,
+    dataDir: DATA_DIR,
+    dataFile: DATA_FILE,
+    dataFileExists: fs.existsSync(DATA_FILE),
+    writable,
+    writeError,
+  });
+}));
+
+app.get("/api/state", route((req, res) => {
+  res.json(publicState(readState()));
+}));
+
+app.post("/api/admin/login", route((req, res) => {
   if (!ADMIN_PASSWORD) return res.status(503).json({ error: "ADMIN_PASSWORD is not configured" });
   if (normalizeSecret(req.body.password) !== normalizeSecret(ADMIN_PASSWORD)) {
     return res.status(401).json({ error: "Invalid password" });
   }
   res.json({ token: ADMIN_TOKEN });
-});
+}));
 
-app.post("/api/events/generate", requireAdmin, (req, res) => {
+app.post("/api/events/generate", requireAdmin, route((req, res) => {
   const state = readState();
   generateUpcoming(state, Number(req.body.count || 24));
   writeState(state);
   res.json(publicState(state));
-});
+}));
 
-app.post("/api/events/add-atlas-seed", requireAdmin, (req, res) => {
+app.post("/api/events/add-atlas-seed", requireAdmin, route((req, res) => {
   const state = readState();
   addAtlasSeedEvents(state);
   writeState(state);
   res.json(publicState(state));
-});
+}));
 
-app.patch("/api/events/:id", requireAdmin, (req, res) => {
+app.patch("/api/events/:id", requireAdmin, route((req, res) => {
   const state = readState();
   const event = state.events.find((item) => item.id === req.params.id);
   if (!event) return res.status(404).json({ error: "Event not found" });
@@ -357,9 +392,9 @@ app.patch("/api/events/:id", requireAdmin, (req, res) => {
   recalculatePendingSuggestions(state);
   writeState(state);
   res.json(publicState(state));
-});
+}));
 
-app.patch("/api/bosses/:id", requireAdmin, (req, res) => {
+app.patch("/api/bosses/:id", requireAdmin, route((req, res) => {
   const state = readState();
   const boss = state.bosses.find((item) => item.id === req.params.id);
   if (!boss) return res.status(404).json({ error: "Boss not found" });
@@ -370,9 +405,9 @@ app.patch("/api/bosses/:id", requireAdmin, (req, res) => {
   recalculatePendingSuggestions(state);
   writeState(state);
   res.json(publicState(state));
-});
+}));
 
-app.patch("/api/guilds/:id", requireAdmin, (req, res) => {
+app.patch("/api/guilds/:id", requireAdmin, route((req, res) => {
   const state = readState();
   const guild = state.guilds.find((item) => item.id === req.params.id);
   if (!guild) return res.status(404).json({ error: "Guild not found" });
@@ -383,18 +418,24 @@ app.patch("/api/guilds/:id", requireAdmin, (req, res) => {
   recalculatePendingSuggestions(state);
   writeState(state);
   res.json(publicState(state));
-});
+}));
 
-app.post("/api/reset", requireAdmin, (req, res) => {
+app.post("/api/reset", requireAdmin, route((req, res) => {
   const state = seedState();
   writeState(state);
   res.json(publicState(state));
-});
+}));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
+app.use((error, req, res, next) => {
+  console.error(`[${new Date().toISOString()}] ${req.method} ${req.path}`, error);
+  res.status(500).json({ error: "Server error", message: error.message });
+});
+
 app.listen(PORT, () => {
   console.log(`RF Next Rotation running on http://localhost:${PORT}`);
+  console.log(`DATA_DIR=${DATA_DIR}`);
 });
