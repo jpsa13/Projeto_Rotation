@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RF Next Rotation</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>RF Next Rotation</h1>
+      <p>Boss ownership rotation based on confirmed loot history.</p>
+    </div>
+    <div class="actions">
+      <button id="themeBtn" type="button">Dark mode</button>
+      <button id="seedBtn" type="button">Reset seed data</button>
+      <button id="exportBtn" type="button">Export JSON</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Main tabs">
+    <button class="tab active" data-tab="summary" type="button">Summary</button>
+    <button class="tab" data-tab="next" type="button">Upcoming</button>
+    <button class="tab" data-tab="events" type="button">Events</button>
+    <button class="tab" data-tab="bosses" type="button">Bosses</button>
+    <button class="tab" data-tab="guilds" type="button">Guilds</button>
+  </nav>
+
+  <main>
+    <section id="summary" class="panel active"></section>
+    <section id="next" class="panel"></section>
+    <section id="events" class="panel"></section>
+    <section id="bosses" class="panel"></section>
+    <section id="guilds" class="panel"></section>
+  </main>
+
+  <template id="emptyState">
+    <div class="empty">No data to display.</div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
