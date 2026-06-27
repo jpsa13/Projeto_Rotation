@@ -126,6 +126,10 @@ function generateUpcoming(count = 24) {
   return api("/api/events/generate", { method: "POST", body: JSON.stringify({ count }) });
 }
 
+function recalculateSuggestions() {
+  return api("/api/events/recalculate", { method: "POST" });
+}
+
 function addAtlasSeedEvents() {
   return api("/api/events/add-atlas-seed", { method: "POST" });
 }
@@ -349,7 +353,12 @@ function renderNext() {
     button.type = "button";
     button.textContent = "Generate upcoming events";
     button.addEventListener("click", () => generateUpcoming(24));
+    const recalcButton = document.createElement("button");
+    recalcButton.type = "button";
+    recalcButton.textContent = "Recalculate suggestions";
+    recalcButton.addEventListener("click", recalculateSuggestions);
     toolbar.append(button);
+    toolbar.append(recalcButton);
     root.append(toolbar);
   }
   renderEventsTable(root, state.events.filter((event) => event.status === "pending" && new Date(event.spawnAt) > new Date()).slice(0, 30));

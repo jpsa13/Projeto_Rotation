@@ -166,6 +166,49 @@ function suggestOwnerFromScores(state, scores) {
   return { block, guild };
 }
 
+function otherBlock(block) {
+  return block === "BR" ? "INT" : "BR";
+}
+
+function bossWeight(state, bossId) {
+  return Number(getBoss(state, bossId)?.weight || 0);
+}
+
+function blockSlotsForBatch(scores, count) {
+  const behind = chooseBlock(scores);
+  const other = otherBlock(behind);
+  const behindCount = Math.ceil(count / 2);
+  const otherCount = Math.floor(count / 2);
+  const slots = [];
+
+  for (let index = 0; index < count; index += 1) {
+    const preferBehind = index % 2 === 0;
+    if (preferBehind && slots.filter((block) => block === behind).length < behindCount) {
+      slots.push(behind);
+    } else if (slots.filter((block) => block === other).length < otherCount) {
+      slots.push(other);
+    } else {
+      slots.push(behind);
+    }
+  }
+
+  return slots;
+}
+
+function assignPendingBatch(state, pendingEvents, scores) {
+  const ordered = [...pendingEvents].sort((a, b) => bossWeight(state, b.bossId) - bossWeight(state, a.bossId));
+  const slots = blockSlotsForBatch(scores, ordered.length);
+
+  ordered.forEach((event, index) => {
+    const boss = getBoss(state, event.bossId);
+    const block = slots[index];
+    const guild = chooseGuild(state, block, scores);
+    event.suggestedBlock = block;
+    event.suggestedGuildId = guild?.id || "";
+    if (guild) addScore(scores, block, guild.id, boss?.weight || 0);
+  });
+}
+
 function serverDailyAt(time) {
   const [hours, minutes] = time.split(":").map(Number);
   const now = new Date();
@@ -212,20 +255,29 @@ function addNextCandidate(state, candidates, existingKeys, latestByBoss, boss) {
 
 function recalculatePendingSuggestions(state) {
   const scores = { blockScores: { BR: 0, INT: 0 }, guildScores: Object.fromEntries(state.guilds.map((guild) => [guild.id, 0])) };
-  state.events.sort((a, b) => a.spawnAt.localeCompare(b.spawnAt)).forEach((event) => {
-    const boss = getBoss(state, event.bossId);
-    const weight = boss ? Number(boss.weight) : 0;
-    if (event.status === "pending") {
-      const suggestion = suggestOwnerFromScores(state, scores);
-      event.suggestedBlock = suggestion.block;
-      event.suggestedGuildId = suggestion.guild?.id || "";
-      if (suggestion.guild) addScore(scores, suggestion.block, suggestion.guild.id, weight);
-      return;
+  const sorted = state.events.sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
+
+  for (let index = 0; index < sorted.length;) {
+    const spawnAt = sorted[index].spawnAt;
+    const batch = [];
+    while (index < sorted.length && sorted[index].spawnAt === spawnAt) {
+      batch.push(sorted[index]);
+      index += 1;
     }
-    if (event.counted && event.realBlock && event.realGuildId && ["confirmed", "corrected"].includes(event.status)) {
-      addScore(scores, event.realBlock, event.realGuildId, weight);
-    }
-  });
+
+    batch
+      .filter((event) => event.status !== "pending")
+      .forEach((event) => {
+        const boss = getBoss(state, event.bossId);
+        const weight = boss ? Number(boss.weight) : 0;
+        if (event.counted && event.realBlock && event.realGuildId && ["confirmed", "corrected"].includes(event.status)) {
+          addScore(scores, event.realBlock, event.realGuildId, weight);
+        }
+      });
+
+    const pending = batch.filter((event) => event.status === "pending");
+    if (pending.length) assignPendingBatch(state, pending, scores);
+  }
 }
 
 function generateUpcoming(state, count = 24) {
@@ -271,6 +323,7 @@ function generateUpcoming(state, count = 24) {
 
   state.events.push(...created);
   state.events.sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
+  recalculatePendingSuggestions(state);
   return created;
 }
 
@@ -372,6 +425,13 @@ app.post("/api/events/generate", requireAdmin, route((req, res) => {
   generateUpcoming(state, Number(req.body.count || 24));
   writeState(state);
   res.json(publicState(state));
+}));
+
+app.post("/api/events/recalculate", requireAdmin, route((req, res) => {
+  const state = readState();
+  recalculatePendingSuggestions(state);
+  writeState(state);
+  res.json(publicState(state, { message: "Pending suggestions recalculated." }));
 }));
 
 app.post("/api/events/add-atlas-seed", requireAdmin, route((req, res) => {
