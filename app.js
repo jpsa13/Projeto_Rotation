@@ -386,7 +386,10 @@ function renderEvents() {
     toolbar.append(bg1Button);
     root.append(toolbar);
   }
-  const rows = [...state.events].sort((a, b) => b.spawnAt.localeCompare(a.spawnAt));
+  const now = new Date();
+  const rows = state.events
+    .filter((event) => new Date(event.spawnAt) <= now)
+    .sort((a, b) => b.spawnAt.localeCompare(a.spawnAt));
   renderEventsTable(root, rows);
 }
 
