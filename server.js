@@ -17,6 +17,8 @@ const blocks = ["BR", "INT"];
 const statuses = ["pending", "confirmed", "corrected", "ffa", "enemy", "skipped", "bugged"];
 const atlasInitialSpawn = "2026-06-27T11:40:00.000Z";
 const battleground1SundaySpawn = "2026-06-28T16:00:00.000Z"; // 2026-06-28 13:00 BRT.
+const groupDSundaySpawn = "2026-06-28T15:13:00.000Z"; // 2026-06-28 12:13 BRT.
+const groupDBossIds = new Set(["mecha-tamac", "infernal-larva", "locust", "mecha-tweezer", "vastus"]);
 
 const bossSeed = [
   ["flower-corruption", "Flower of Corruption", "Novus Group B", 42, "fixed", "16:00", null, 20, true, null],
@@ -27,11 +29,11 @@ const bossSeed = [
   ["mecha-lizard", "Mecha Lizard", "Novus Group C", 52, "fixed", "22:30", null, 47, true, null],
   ["mecha-temizl", "Mecha Temizl", "Novus Group C", 60, "fixed", "22:30", null, 55, true, null],
   ["prime-draco", "Prime Draco", "Novus Group C", 62, "fixed", "22:30", null, 57, true, null],
-  ["mecha-tamac", "Mecha Tamac", "Novus Group D", 66, "interval", null, 42, 70, true, "DYNAMIC_D"],
-  ["infernal-larva", "Infernal Larva", "Novus Group D", 67, "interval", null, 42, 71, true, "DYNAMIC_D"],
-  ["locust", "Locust", "Novus Group D", 68, "interval", null, 42, 72, true, "DYNAMIC_D"],
-  ["mecha-tweezer", "Mecha Tweezer", "Novus Group D", 70, "interval", null, 42, 74, true, "DYNAMIC_D"],
-  ["vastus", "Vastus", "Novus Group D", 74, "interval", null, 42, 78, true, "DYNAMIC_D"],
+  ["mecha-tamac", "Mecha Tamac", "Novus Group D", 66, "interval", null, 42, 70, true, groupDSundaySpawn],
+  ["infernal-larva", "Infernal Larva", "Novus Group D", 67, "interval", null, 42, 71, true, groupDSundaySpawn],
+  ["locust", "Locust", "Novus Group D", 68, "interval", null, 42, 72, true, groupDSundaySpawn],
+  ["mecha-tweezer", "Mecha Tweezer", "Novus Group D", 70, "interval", null, 42, 74, true, groupDSundaySpawn],
+  ["vastus", "Vastus", "Novus Group D", 74, "interval", null, 42, 78, true, groupDSundaySpawn],
   ["mecha-warbeast", "Mecha Warbeast", "Novus Group E", 76, "interval", null, 48, 95, false, null],
   ["mecha-ertelem", "Mecha Ertelem", "Novus Group E", 77, "interval", null, 48, 96, false, null],
   ["mecha-devourer", "Mecha Devourer", "Novus Group E", 79, "interval", null, 48, 98, false, null],
@@ -50,12 +52,7 @@ const guildSeed = [
   { id: "ironhands", name: "IronHands", block: "INT", active: true, priority: 1 },
 ];
 
-function dGroupInitialSpawn() {
-  return new Date(Date.now() + ((1 * 24 + 9) * 60 + 45) * 60 * 1000).toISOString();
-}
-
 function seedState() {
-  const dSpawn = dGroupInitialSpawn();
   return {
     bosses: bossSeed.map(([id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt]) => ({
       id,
@@ -67,7 +64,7 @@ function seedState() {
       respawnHours,
       weight,
       active,
-      initialNextAt: initialNextAt === "DYNAMIC_D" ? dSpawn : initialNextAt,
+      initialNextAt,
     })),
     guilds: structuredClone(guildSeed),
     events: [],
@@ -81,7 +78,9 @@ function ensureData() {
 
 function readState() {
   ensureData();
-  return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  const state = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  if (migrateState(state)) writeState(state);
+  return state;
 }
 
 function writeState(state) {
@@ -89,6 +88,39 @@ function writeState(state) {
   const tempFile = `${DATA_FILE}.tmp`;
   fs.writeFileSync(tempFile, JSON.stringify(state, null, 2));
   fs.renameSync(tempFile, DATA_FILE);
+}
+
+function migrateState(state) {
+  let changed = false;
+
+  state.bosses.forEach((boss) => {
+    if (!groupDBossIds.has(boss.id)) return;
+    if (boss.respawnHours !== 42) {
+      boss.respawnHours = 42;
+      changed = true;
+    }
+    if (boss.initialNextAt !== groupDSundaySpawn) {
+      boss.initialNextAt = groupDSundaySpawn;
+      changed = true;
+    }
+  });
+
+  state.events.forEach((event) => {
+    if (!groupDBossIds.has(event.bossId)) return;
+    if (event.status !== "pending" || event.realGuildId || event.realBlock) return;
+    if (event.spawnAt !== groupDSundaySpawn) {
+      event.spawnAt = groupDSundaySpawn;
+      event.note = event.note || "Corrected Group D Sunday 12:13 spawn";
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    state.events.sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
+    recalculatePendingSuggestions(state);
+  }
+
+  return changed;
 }
 
 function publicBoss(boss) {
