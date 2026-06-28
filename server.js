@@ -19,6 +19,20 @@ const atlasInitialSpawn = "2026-06-27T11:40:00.000Z";
 const battleground1SundaySpawn = "2026-06-28T16:00:00.000Z"; // 2026-06-28 13:00 BRT.
 const groupDSundaySpawn = "2026-06-28T15:13:00.000Z"; // 2026-06-28 12:13 BRT.
 const groupDBossIds = new Set(["mecha-tamac", "infernal-larva", "locust", "mecha-tweezer", "vastus"]);
+const historicalCorrections = [
+  {
+    bossId: "mecha-optic-larva",
+    spawnAt: "2026-06-27T19:00:00.000Z", // 2026-06-27 16:00 BRT, Group B boss 3.
+    guildId: "vendetta",
+    note: "Historical correction: Vendetta got Group B3 on 2026-06-27.",
+  },
+  {
+    bossId: "mecha-tamac",
+    spawnAt: "2026-06-26T21:13:00.000Z", // 2026-06-26 18:13 BRT, Group D boss 1.
+    guildId: "vendetta",
+    note: "Historical correction: Vendetta got Group D1 on 2026-06-26.",
+  },
+];
 
 const bossSeed = [
   ["flower-corruption", "Flower of Corruption", "Novus Group B", 42, "fixed", "16:00", null, 20, true, null],
@@ -113,6 +127,45 @@ function migrateState(state) {
       event.note = event.note || "Corrected Group D Sunday 12:13 spawn";
       changed = true;
     }
+  });
+
+  historicalCorrections.forEach((correction) => {
+    const guild = state.guilds.find((item) => item.id === correction.guildId);
+    if (!guild) return;
+
+    let event = state.events.find((item) => item.bossId === correction.bossId && item.spawnAt === correction.spawnAt);
+    if (!event) {
+      event = {
+        id: `event-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        spawnAt: correction.spawnAt,
+        bossId: correction.bossId,
+        suggestedBlock: guild.block,
+        suggestedGuildId: guild.id,
+        realBlock: guild.block,
+        realGuildId: guild.id,
+        status: "corrected",
+        counted: true,
+        note: correction.note,
+      };
+      state.events.push(event);
+      changed = true;
+      return;
+    }
+
+    const patch = {
+      realBlock: guild.block,
+      realGuildId: guild.id,
+      status: event.suggestedGuildId === guild.id ? "confirmed" : "corrected",
+      counted: true,
+      note: event.note || correction.note,
+    };
+
+    Object.entries(patch).forEach(([key, value]) => {
+      if (event[key] !== value) {
+        event[key] = value;
+        changed = true;
+      }
+    });
   });
 
   if (changed) {
