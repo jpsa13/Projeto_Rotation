@@ -386,7 +386,8 @@ function renderEvents() {
     toolbar.append(bg1Button);
     root.append(toolbar);
   }
-  renderEventsTable(root, state.events);
+  const rows = [...state.events].sort((a, b) => b.spawnAt.localeCompare(a.spawnAt));
+  renderEventsTable(root, rows);
 }
 
 function renderEventsTable(root, events) {
