@@ -19,6 +19,7 @@ const atlasInitialSpawn = "2026-06-27T11:40:00.000Z";
 const battleground1SundaySpawn = "2026-06-28T16:00:00.000Z"; // 2026-06-28 13:00 BRT.
 const groupDSundaySpawn = "2026-06-28T15:13:00.000Z"; // 2026-06-28 12:13 BRT.
 const groupDBossIds = new Set(["mecha-tamac", "infernal-larva", "locust", "mecha-tweezer", "vastus"]);
+const hiddenBossGroups = new Set(["Launch Base Boss Group", "Defense Facility Boss Group"]);
 const historicalCorrections = [
   {
     bossId: "mecha-optic-larva",
@@ -91,6 +92,13 @@ const bossSeed = [
   ["mecha-lapis", "Mecha Lapis", "Atlas Boss Group", 57, "interval", null, 60, 110, true, atlasInitialSpawn],
   ["mecha-silex", "Mecha Silex", "Atlas Boss Group", 59, "interval", null, 60, 112, true, atlasInitialSpawn],
   ["mecha-nyoka", "Mecha Nyoka", "Atlas Boss Group", 61, "interval", null, 60, 114, true, atlasInitialSpawn],
+  ["titan", "Titan", "Launch Base Boss Group", 92, "interval", null, 72, 145, false, null],
+  ["dogon", "Dogon", "Launch Base Boss Group", 94, "interval", null, 72, 147, false, null],
+  ["brontes", "Brontes", "Launch Base Boss Group", 96, "interval", null, 72, 149, false, null],
+  ["mad-bomber", "Mad Bomber", "Defense Facility Boss Group", 102, "interval", null, 72, 155, false, null],
+  ["big-hunter", "Big Hunter", "Defense Facility Boss Group", 104, "interval", null, 72, 157, false, null],
+  ["dancing-wasp", "Dancing Wasp", "Defense Facility Boss Group", 106, "interval", null, 72, 159, false, null],
+  ["orbital-sentinel", "Orbital Sentinel", "Defense Facility Boss Group", 108, "interval", null, 72, 161, false, null],
 ];
 
 const guildSeed = [
@@ -142,6 +150,12 @@ function writeState(state) {
 
 function migrateState(state) {
   let changed = false;
+
+  bossSeed.forEach(([id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt]) => {
+    if (state.bosses.some((boss) => boss.id === id)) return;
+    state.bosses.push({ id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt });
+    changed = true;
+  });
 
   state.bosses.forEach((boss) => {
     if (!groupDBossIds.has(boss.id)) return;
@@ -227,7 +241,7 @@ function publicState(state, meta = {}) {
   const scores = calculateScores(state);
   return {
     appVersion: APP_VERSION,
-    bosses: state.bosses.map(publicBoss),
+    bosses: state.bosses.filter((boss) => !hiddenBossGroups.has(boss.group)).map(publicBoss),
     guilds: state.guilds.map(publicGuild),
     events: state.events,
     scores,
