@@ -416,7 +416,7 @@ function renderEventsTable(root, events) {
     { label: "Boss", render: (row) => getBoss(row.bossId)?.name || row.bossId },
     { label: "Level", render: (row) => levelChip(row) },
     { label: "Group", render: (row) => groupBadge(getBoss(row.bossId)?.group || "-") },
-    { label: "Suggested", render: (row) => `${row.suggestedBlock} - ${getGuild(row.suggestedGuildId)?.name || "-"}` },
+    { label: "Suggested", render: (row) => getGuild(row.suggestedGuildId)?.name || "-" },
     { label: "Real team", render: (row) => makeTeamButtons(row) },
     { label: "Real loot", render: (row) => makeGuildButtons(row) },
     { label: "Status", render: (row) => makeSelect(state.statuses.map((status) => ({ label: titleCase(status), value: status })), row.status, (value) => updateEvent(row.id, { status: value })) },

@@ -426,7 +426,7 @@ textarea {
 
 .guild-choice {
   position: relative;
-  padding: 7px 8px;
+  padding: 7px 7px;
   background: var(--choice-bg);
   white-space: nowrap;
   min-width: 120px;
@@ -457,8 +457,9 @@ textarea {
 }
 
 .guild-choice.active {
+  padding-left: 9px;
   border-width: 2px;
-  border-left-width: 6px;
+  border-left-width: 4px;
   border-left-color: var(--guild-color, var(--accent));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 26%, transparent);
   font-weight: 800;
