@@ -61,6 +61,13 @@ const historicalCorrections = [
     status: "corrected",
     note: "Historical correction: McDonalds got Group D5 on 2026-06-26.",
   },
+  {
+    bossId: "prime-draco",
+    spawnAt: "2026-06-27T01:30:00.000Z", // 2026-06-26 22:30 BRT, Group C boss 4.
+    guildId: "vendetta",
+    status: "corrected",
+    note: "Historical correction: Vendetta got Group C4 on 2026-06-26.",
+  },
 ];
 
 const bossSeed = [
