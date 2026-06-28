@@ -130,14 +130,6 @@ function recalculateSuggestions() {
   return api("/api/events/recalculate", { method: "POST" });
 }
 
-function addAtlasSeedEvents() {
-  return api("/api/events/add-atlas-seed", { method: "POST" });
-}
-
-function addBattleground1SundayEvents() {
-  return api("/api/events/add-bg1-sunday", { method: "POST" });
-}
-
 function makeSelect(options, value, onChange, placeholder = "") {
   const select = document.createElement("select");
   if (placeholder) select.append(new Option(placeholder, ""));
@@ -383,21 +375,6 @@ function renderNext() {
 function renderEvents() {
   const root = document.querySelector("#events");
   root.innerHTML = `<div class="section-head"><div><h2>Events</h2><p>Set the real looter here. Corrections become the source of truth for future suggestions.</p></div></div>`;
-  if (isAdmin()) {
-    const toolbar = document.createElement("div");
-    toolbar.className = "toolbar";
-    const atlasButton = document.createElement("button");
-    atlasButton.type = "button";
-    atlasButton.textContent = "Add Atlas 08:40 events";
-    atlasButton.addEventListener("click", () => addAtlasSeedEvents());
-    const bg1Button = document.createElement("button");
-    bg1Button.type = "button";
-    bg1Button.textContent = "Add BG1 Sunday 13:00";
-    bg1Button.addEventListener("click", () => addBattleground1SundayEvents());
-    toolbar.append(atlasButton);
-    toolbar.append(bg1Button);
-    root.append(toolbar);
-  }
   const now = new Date();
   const rows = state.events
     .filter((event) => new Date(event.spawnAt) <= now)
