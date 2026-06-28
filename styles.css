@@ -425,6 +425,7 @@ textarea {
 }
 
 .guild-choice {
+  position: relative;
   padding: 7px 8px;
   background: var(--choice-bg);
   white-space: nowrap;
@@ -453,6 +454,28 @@ textarea {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.guild-choice.active {
+  border-width: 2px;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 26%, transparent);
+  font-weight: 800;
+}
+
+.guild-choice.active::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #fff;
+  transform: translateY(-50%);
+}
+
+.guild-choice.active {
+  padding-left: 22px;
 }
 
 .time-note {
