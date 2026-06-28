@@ -190,6 +190,7 @@ function makeGuildButtons(row) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = `guild-choice${row.realGuildId === guild.id ? " active" : ""}`;
+      button.style.setProperty("--guild-color", guildColor(guild.id));
       button.textContent = guild.name;
       button.title = `${guild.block} - ${guild.name}`;
       button.disabled = !isAdmin();
@@ -197,6 +198,17 @@ function makeGuildButtons(row) {
       wrap.append(button);
     });
   return wrap;
+}
+
+function guildColor(guildId) {
+  return {
+    blood: "#e5484d",
+    mcdonalds: "#f6c343",
+    vendetta: "#2f9e6d",
+    bloodbrothers: "#8b5cf6",
+    titan: "#3b82f6",
+    ironhands: "#94a3b8",
+  }[guildId] || "#49a7c7";
 }
 
 function makeTeamButtons(row) {

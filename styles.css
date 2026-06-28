@@ -430,6 +430,7 @@ textarea {
   background: var(--choice-bg);
   white-space: nowrap;
   min-width: 120px;
+  border-left: 4px solid var(--guild-color, transparent);
 }
 
 .datetime-stack {
@@ -458,24 +459,11 @@ textarea {
 
 .guild-choice.active {
   border-width: 2px;
+  border-left-width: 6px;
+  border-left-color: var(--guild-color, var(--accent));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 26%, transparent);
   font-weight: 800;
-}
-
-.guild-choice.active::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: #fff;
-  transform: translateY(-50%);
-}
-
-.guild-choice.active {
-  padding-left: 22px;
+  color: #fff;
 }
 
 .time-note {
