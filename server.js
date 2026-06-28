@@ -29,8 +29,37 @@ const historicalCorrections = [
   {
     bossId: "mecha-tamac",
     spawnAt: "2026-06-26T21:13:00.000Z", // 2026-06-26 18:13 BRT, Group D boss 1.
-    guildId: "vendetta",
-    note: "Historical correction: Vendetta got Group D1 on 2026-06-26.",
+    guildId: "mcdonalds",
+    status: "ffa",
+    note: "Historical correction: McDonalds got Group D1 as FFA on 2026-06-26.",
+  },
+  {
+    bossId: "infernal-larva",
+    spawnAt: "2026-06-26T21:13:00.000Z", // 2026-06-26 18:13 BRT, Group D boss 2.
+    guildId: "titan",
+    status: "corrected",
+    note: "Historical correction: Titan got Group D2 on 2026-06-26.",
+  },
+  {
+    bossId: "locust",
+    spawnAt: "2026-06-26T21:13:00.000Z", // 2026-06-26 18:13 BRT, Group D boss 3.
+    guildId: "blood",
+    status: "corrected",
+    note: "Historical correction: BLOOD got Group D3 on 2026-06-26.",
+  },
+  {
+    bossId: "mecha-tweezer",
+    spawnAt: "2026-06-26T21:13:00.000Z", // 2026-06-26 18:13 BRT, Group D boss 4.
+    guildId: "bloodbrothers",
+    status: "corrected",
+    note: "Historical correction: BloodBrothers got Group D4 on 2026-06-26.",
+  },
+  {
+    bossId: "vastus",
+    spawnAt: "2026-06-26T21:13:00.000Z", // 2026-06-26 18:13 BRT, Group D boss 5.
+    guildId: "mcdonalds",
+    status: "corrected",
+    note: "Historical correction: McDonalds got Group D5 on 2026-06-26.",
   },
 ];
 
@@ -143,7 +172,7 @@ function migrateState(state) {
         suggestedGuildId: guild.id,
         realBlock: guild.block,
         realGuildId: guild.id,
-        status: "corrected",
+        status: correction.status || "corrected",
         counted: true,
         note: correction.note,
       };
@@ -155,9 +184,9 @@ function migrateState(state) {
     const patch = {
       realBlock: guild.block,
       realGuildId: guild.id,
-      status: event.suggestedGuildId === guild.id ? "confirmed" : "corrected",
+      status: correction.status || (event.suggestedGuildId === guild.id ? "confirmed" : "corrected"),
       counted: true,
-      note: event.note || correction.note,
+      note: correction.note,
     };
 
     Object.entries(patch).forEach(([key, value]) => {
@@ -206,7 +235,7 @@ function getBoss(state, id) {
 }
 
 function countedEvents(state, events = state.events) {
-  return events.filter((event) => event.counted && event.realGuildId && event.realBlock && ["confirmed", "corrected"].includes(event.status));
+  return events.filter((event) => event.counted && event.realGuildId && event.realBlock && ["confirmed", "corrected", "ffa"].includes(event.status));
 }
 
 function calculateScores(state, events = state.events) {
@@ -356,7 +385,7 @@ function recalculatePendingSuggestions(state) {
       .forEach((event) => {
         const boss = getBoss(state, event.bossId);
         const weight = boss ? Number(boss.weight) : 0;
-        if (event.counted && event.realBlock && event.realGuildId && ["confirmed", "corrected"].includes(event.status)) {
+        if (event.counted && event.realBlock && event.realGuildId && ["confirmed", "corrected", "ffa"].includes(event.status)) {
           addScore(scores, event.realBlock, event.realGuildId, weight);
         }
       });
