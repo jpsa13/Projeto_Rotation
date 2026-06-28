@@ -13,6 +13,11 @@
   --input-bg: #ffffff;
   --head-bg: #fbfcfd;
   --choice-bg: #f3f6f8;
+  --group-b-bg: rgba(67, 166, 106, 0.08);
+  --group-c-bg: rgba(208, 161, 58, 0.09);
+  --group-d-bg: rgba(208, 106, 59, 0.09);
+  --group-e-bg: rgba(182, 74, 74, 0.09);
+  --group-atlas-bg: rgba(180, 137, 242, 0.10);
 }
 
 body.dark {
@@ -30,6 +35,11 @@ body.dark {
   --input-bg: #12171d;
   --head-bg: #151a20;
   --choice-bg: #202832;
+  --group-b-bg: rgba(67, 166, 106, 0.13);
+  --group-c-bg: rgba(208, 161, 58, 0.13);
+  --group-d-bg: rgba(208, 106, 59, 0.14);
+  --group-e-bg: rgba(182, 74, 74, 0.14);
+  --group-atlas-bg: rgba(180, 137, 242, 0.15);
 }
 
 * {
@@ -218,6 +228,10 @@ tr:last-child td {
 
 tbody tr {
   --group-color: var(--line);
+  --group-bg: transparent;
+  background:
+    linear-gradient(90deg, var(--group-bg), transparent 72%),
+    var(--surface);
 }
 
 tbody tr td:first-child {
@@ -226,22 +240,27 @@ tbody tr td:first-child {
 
 tbody tr.group-atlas {
   --group-color: #b489f2;
+  --group-bg: var(--group-atlas-bg);
 }
 
 tbody tr.group-b {
   --group-color: #43a66a;
+  --group-bg: var(--group-b-bg);
 }
 
 tbody tr.group-c {
   --group-color: #d0a13a;
+  --group-bg: var(--group-c-bg);
 }
 
 tbody tr.group-d {
   --group-color: #d06a3b;
+  --group-bg: var(--group-d-bg);
 }
 
 tbody tr.group-e {
   --group-color: #b64a4a;
+  --group-bg: var(--group-e-bg);
 }
 
 tbody tr.group-divider td {
