@@ -191,6 +191,14 @@ function migrateState(state) {
     }
   });
 
+  state.events.forEach((event) => {
+    const finalStatuses = new Set(["confirmed", "corrected", "ffa"]);
+    if (finalStatuses.has(event.status) && (!event.realGuildId || !event.realBlock)) {
+      event.status = "pending";
+      changed = true;
+    }
+  });
+
   historicalCorrections.forEach((correction) => {
     const guild = state.guilds.find((item) => item.id === correction.guildId);
     if (!guild) return;
