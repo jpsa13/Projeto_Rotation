@@ -207,7 +207,7 @@ function guildColor(guildId) {
     vendetta: "#2f9e6d",
     bloodbrothers: "#8b5cf6",
     titan: "#3b82f6",
-    ironhands: "#94a3b8",
+    ironhands: "#22d3ee",
   }[guildId] || "#49a7c7";
 }
 

@@ -430,7 +430,6 @@ textarea {
   background: var(--choice-bg);
   white-space: nowrap;
   min-width: 120px;
-  border-left: 4px solid var(--guild-color, transparent);
 }
 
 .datetime-stack {
@@ -464,6 +463,11 @@ textarea {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 26%, transparent);
   font-weight: 800;
   color: #fff;
+}
+
+body.dark .guild-choice.active,
+body.dark .team-choice.active {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
 }
 
 .time-note {
