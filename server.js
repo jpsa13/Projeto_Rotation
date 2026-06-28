@@ -20,6 +20,11 @@ const battleground1SundaySpawn = "2026-06-28T16:00:00.000Z"; // 2026-06-28 13:00
 const groupDSundaySpawn = "2026-06-28T15:13:00.000Z"; // 2026-06-28 12:13 BRT.
 const groupDBossIds = new Set(["mecha-tamac", "infernal-larva", "locust", "mecha-tweezer", "vastus"]);
 const hiddenBossGroups = new Set(["Launch Base Boss Group", "Defense Facility Boss Group"]);
+const guildScoreMultipliers = {
+  blood: 0.92,
+  mcdonalds: 1,
+  vendetta: 1.08,
+};
 const historicalCorrections = [
   {
     bossId: "mecha-optic-larva",
@@ -102,9 +107,9 @@ const bossSeed = [
 ];
 
 const guildSeed = [
-  { id: "blood", name: "BLOOD", block: "BR", active: true, priority: 1.12 },
+  { id: "blood", name: "BLOOD", block: "BR", active: true, priority: 1 },
   { id: "mcdonalds", name: "McDonalds", block: "BR", active: true, priority: 1 },
-  { id: "vendetta", name: "Vendetta", block: "BR", active: true, priority: 0.9 },
+  { id: "vendetta", name: "Vendetta", block: "BR", active: true, priority: 1 },
   { id: "bloodbrothers", name: "BloodBrothers", block: "INT", active: true, priority: 1 },
   { id: "titan", name: "Titan", block: "INT", active: true, priority: 1 },
   { id: "ironhands", name: "IronHands", block: "INT", active: true, priority: 1 },
@@ -165,6 +170,13 @@ function migrateState(state) {
     }
     if (boss.initialNextAt !== groupDSundaySpawn) {
       boss.initialNextAt = groupDSundaySpawn;
+      changed = true;
+    }
+  });
+
+  state.guilds.forEach((guild) => {
+    if (guild.priority !== 1) {
+      guild.priority = 1;
       changed = true;
     }
   });
@@ -259,6 +271,10 @@ function countedEvents(state, events = state.events) {
   return events.filter((event) => event.counted && event.realGuildId && event.realBlock && ["confirmed", "corrected", "ffa"].includes(event.status));
 }
 
+function effectiveWeight(weight, guildId) {
+  return Number(weight || 0) * Number(guildScoreMultipliers[guildId] || 1);
+}
+
 function calculateScores(state, events = state.events) {
   const blockScores = { BR: 0, INT: 0 };
   const guildScores = Object.fromEntries(state.guilds.map((guild) => [guild.id, 0]));
@@ -266,8 +282,9 @@ function calculateScores(state, events = state.events) {
   countedEvents(state, events).forEach((event) => {
     const boss = getBoss(state, event.bossId);
     const weight = boss ? Number(boss.weight) : 0;
-    blockScores[event.realBlock] += weight;
-    guildScores[event.realGuildId] = (guildScores[event.realGuildId] || 0) + weight;
+    const score = effectiveWeight(weight, event.realGuildId);
+    blockScores[event.realBlock] += score;
+    guildScores[event.realGuildId] = (guildScores[event.realGuildId] || 0) + score;
   });
 
   return { blockScores, guildScores, countedEvents: countedEvents(state, events).length };
@@ -341,7 +358,7 @@ function assignPendingBatch(state, pendingEvents, scores) {
     const guild = chooseGuild(state, block, scores);
     event.suggestedBlock = block;
     event.suggestedGuildId = guild?.id || "";
-    if (guild) addScore(scores, block, guild.id, boss?.weight || 0);
+    if (guild) addScore(scores, block, guild.id, effectiveWeight(boss?.weight || 0, guild.id));
   });
 }
 
@@ -407,7 +424,7 @@ function recalculatePendingSuggestions(state) {
         const boss = getBoss(state, event.bossId);
         const weight = boss ? Number(boss.weight) : 0;
         if (event.counted && event.realBlock && event.realGuildId && ["confirmed", "corrected", "ffa"].includes(event.status)) {
-          addScore(scores, event.realBlock, event.realGuildId, weight);
+          addScore(scores, event.realBlock, event.realGuildId, effectiveWeight(weight, event.realGuildId));
         }
       });
 
