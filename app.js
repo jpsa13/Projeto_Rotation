@@ -134,6 +134,10 @@ function addAtlasSeedEvents() {
   return api("/api/events/add-atlas-seed", { method: "POST" });
 }
 
+function addBattleground1SundayEvents() {
+  return api("/api/events/add-bg1-sunday", { method: "POST" });
+}
+
 function makeSelect(options, value, onChange, placeholder = "") {
   const select = document.createElement("select");
   if (placeholder) select.append(new Option(placeholder, ""));
@@ -374,7 +378,12 @@ function renderEvents() {
     atlasButton.type = "button";
     atlasButton.textContent = "Add Atlas 08:40 events";
     atlasButton.addEventListener("click", () => addAtlasSeedEvents());
+    const bg1Button = document.createElement("button");
+    bg1Button.type = "button";
+    bg1Button.textContent = "Add BG1 Sunday 13:00";
+    bg1Button.addEventListener("click", () => addBattleground1SundayEvents());
     toolbar.append(atlasButton);
+    toolbar.append(bg1Button);
     root.append(toolbar);
   }
   renderEventsTable(root, state.events);

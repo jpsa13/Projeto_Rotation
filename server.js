@@ -16,6 +16,7 @@ const SERVER_UTC_OFFSET_HOURS = 3;
 const blocks = ["BR", "INT"];
 const statuses = ["pending", "confirmed", "corrected", "ffa", "enemy", "skipped", "bugged"];
 const atlasInitialSpawn = "2026-06-27T11:40:00.000Z";
+const battleground1SundaySpawn = "2026-06-28T16:00:00.000Z"; // 2026-06-28 13:00 BRT.
 
 const bossSeed = [
   ["flower-corruption", "Flower of Corruption", "Novus Group B", 42, "fixed", "16:00", null, 20, true, null],
@@ -328,6 +329,14 @@ function generateUpcoming(state, count = 24) {
 }
 
 function addAtlasSeedEvents(state) {
+  return addAtlasEventsAt(state, atlasInitialSpawn, "Recovered Atlas 08:40 seed event");
+}
+
+function addBattleground1SundayEvents(state) {
+  return addAtlasEventsAt(state, battleground1SundaySpawn, "Battleground 1 Sunday 13:00 event");
+}
+
+function addAtlasEventsAt(state, spawnAt, note) {
   const atlasBossIds = new Set(["mecha-lapis", "mecha-silex", "mecha-nyoka"]);
   const atlasBosses = state.bosses.filter((boss) => atlasBossIds.has(boss.id));
   const existingKeys = new Set(state.events.map((event) => `${event.bossId}|${event.spawnAt}`));
@@ -335,11 +344,11 @@ function addAtlasSeedEvents(state) {
   const created = [];
 
   atlasBosses.forEach((boss) => {
-    if (existingKeys.has(`${boss.id}|${atlasInitialSpawn}`)) return;
+    if (existingKeys.has(`${boss.id}|${spawnAt}`)) return;
     const suggestion = suggestOwnerFromScores(state, calculateScores(state, simulationEvents));
     const event = {
       id: `event-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      spawnAt: atlasInitialSpawn,
+      spawnAt,
       bossId: boss.id,
       suggestedBlock: suggestion.block,
       suggestedGuildId: suggestion.guild?.id || "",
@@ -347,7 +356,7 @@ function addAtlasSeedEvents(state) {
       realGuildId: "",
       status: "pending",
       counted: true,
-      note: "Recovered Atlas 08:40 seed event",
+      note,
     };
     simulationEvents.push({ ...event, realBlock: event.suggestedBlock, realGuildId: event.suggestedGuildId, status: "confirmed" });
     created.push(event);
@@ -439,6 +448,13 @@ app.post("/api/events/add-atlas-seed", requireAdmin, route((req, res) => {
   const created = addAtlasSeedEvents(state);
   writeState(state);
   res.json(publicState(state, { message: `Added ${created.length} Atlas 08:40 event(s).` }));
+}));
+
+app.post("/api/events/add-bg1-sunday", requireAdmin, route((req, res) => {
+  const state = readState();
+  const created = addBattleground1SundayEvents(state);
+  writeState(state);
+  res.json(publicState(state, { message: `Added ${created.length} Battleground 1 13:00 event(s).` }));
 }));
 
 app.patch("/api/events/:id", requireAdmin, route((req, res) => {
