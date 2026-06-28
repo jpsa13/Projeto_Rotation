@@ -464,6 +464,7 @@ function renderGuilds() {
 }
 
 function titleCase(value) {
+  if (value === "ffa") return "FFA";
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
