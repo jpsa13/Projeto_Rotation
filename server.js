@@ -18,7 +18,12 @@ const statuses = ["pending", "confirmed", "corrected", "ffa", "enemy", "skipped"
 const atlasInitialSpawn = "2026-06-27T11:40:00.000Z";
 const battleground1SundaySpawn = "2026-06-28T16:00:00.000Z"; // 2026-06-28 13:00 BRT.
 const groupDSundaySpawn = "2026-06-28T15:13:00.000Z"; // 2026-06-28 12:13 BRT.
+const groupDNextSpawn = "2026-06-30T09:13:00.000Z"; // 2026-06-30 06:13 BRT.
+const groupENextSpawn = "2026-06-30T05:59:00.000Z"; // 2026-06-30 02:59 BRT.
+const dungeonNextSpawn = "2026-06-30T03:00:00.000Z"; // 2026-06-30 00:00 BRT.
 const groupDBossIds = new Set(["mecha-tamac", "infernal-larva", "locust", "mecha-tweezer", "vastus"]);
+const groupEBossIds = new Set(["mecha-warbeast", "mecha-ertelem", "mecha-devourer", "hook"]);
+const dungeonBossIds = new Set(["executor", "grand-forge", "rhamnousia"]);
 const hiddenBossGroups = new Set(["Launch Base Boss Group", "Defense Facility Boss Group"]);
 const guildScoreMultipliers = {
   blood: 0.92,
@@ -90,13 +95,16 @@ const bossSeed = [
   ["locust", "Locust", "Novus Group D", 68, "interval", null, 42, 72, true, groupDSundaySpawn],
   ["mecha-tweezer", "Mecha Tweezer", "Novus Group D", 70, "interval", null, 42, 74, true, groupDSundaySpawn],
   ["vastus", "Vastus", "Novus Group D", 74, "interval", null, 42, 78, true, groupDSundaySpawn],
-  ["mecha-warbeast", "Mecha Warbeast", "Novus Group E", 76, "interval", null, 48, 95, false, null],
-  ["mecha-ertelem", "Mecha Ertelem", "Novus Group E", 77, "interval", null, 48, 96, false, null],
-  ["mecha-devourer", "Mecha Devourer", "Novus Group E", 79, "interval", null, 48, 98, false, null],
-  ["hook", "Hook", "Novus Group E", 80, "interval", null, 48, 99, false, null],
+  ["mecha-warbeast", "Mecha Warbeast", "Novus Group E", 76, "interval", null, 48, 95, true, groupENextSpawn],
+  ["mecha-ertelem", "Mecha Ertelem", "Novus Group E", 77, "interval", null, 48, 96, true, groupENextSpawn],
+  ["mecha-devourer", "Mecha Devourer", "Novus Group E", 79, "interval", null, 48, 98, true, groupENextSpawn],
+  ["hook", "Hook", "Novus Group E", 80, "interval", null, 48, 99, true, groupENextSpawn],
   ["mecha-lapis", "Mecha Lapis", "Atlas Boss Group", 57, "interval", null, 60, 110, true, atlasInitialSpawn],
   ["mecha-silex", "Mecha Silex", "Atlas Boss Group", 59, "interval", null, 60, 112, true, atlasInitialSpawn],
   ["mecha-nyoka", "Mecha Nyoka", "Atlas Boss Group", 61, "interval", null, 60, 114, true, atlasInitialSpawn],
+  ["executor", "Executor", "Dungeon Boss", 84, "interval", null, 48, 118, true, dungeonNextSpawn],
+  ["grand-forge", "Grand Forge", "Dungeon Boss", 96, "interval", null, 48, 132, true, dungeonNextSpawn],
+  ["rhamnousia", "Rhamnousia", "Dungeon Boss", 109, "interval", null, 48, 150, true, dungeonNextSpawn],
   ["titan", "Titan", "Launch Base Boss Group", 92, "interval", null, 72, 145, false, null],
   ["dogon", "Dogon", "Launch Base Boss Group", 94, "interval", null, 72, 147, false, null],
   ["brontes", "Brontes", "Launch Base Boss Group", 96, "interval", null, 72, 149, false, null],
@@ -157,10 +165,35 @@ function migrateState(state) {
   let changed = false;
 
   bossSeed.forEach(([id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt]) => {
-    if (state.bosses.some((boss) => boss.id === id)) return;
-    state.bosses.push({ id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt });
-    changed = true;
+    const existing = state.bosses.find((boss) => boss.id === id);
+    if (!existing) {
+      state.bosses.push({ id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt });
+      changed = true;
+      return;
+    }
+
+    if (groupEBossIds.has(id) || dungeonBossIds.has(id)) {
+      const patch = { name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt };
+      Object.entries(patch).forEach(([key, value]) => {
+        if (existing[key] !== value) {
+          existing[key] = value;
+          changed = true;
+        }
+      });
+    }
   });
+
+  if (dedupeEvents(state)) changed = true;
+
+  if (ensureEventsAt(state, [...groupDBossIds], groupDNextSpawn, "Auto-added next Group D 42h spawn")) {
+    changed = true;
+  }
+  if (ensureEventsAt(state, [...groupEBossIds], groupENextSpawn, "Auto-added Group E 48h spawn")) {
+    changed = true;
+  }
+  if (ensureEventsAt(state, [...dungeonBossIds], dungeonNextSpawn, "Auto-added Dungeon Boss 48h spawn")) {
+    changed = true;
+  }
 
   state.bosses.forEach((boss) => {
     if (!groupDBossIds.has(boss.id)) return;
@@ -184,6 +217,7 @@ function migrateState(state) {
   state.events.forEach((event) => {
     if (!groupDBossIds.has(event.bossId)) return;
     if (event.status !== "pending" || event.realGuildId || event.realBlock) return;
+    if (event.spawnAt >= groupDNextSpawn) return;
     if (event.spawnAt !== groupDSundaySpawn) {
       event.spawnAt = groupDSundaySpawn;
       event.note = event.note || "Corrected Group D Sunday 12:13 spawn";
@@ -239,9 +273,63 @@ function migrateState(state) {
   });
 
   if (changed) {
+    dedupeEvents(state);
     state.events.sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
     recalculatePendingSuggestions(state);
   }
+
+  return changed;
+}
+
+function dedupeEvents(state) {
+  let changed = false;
+  const byKey = new Map();
+
+  state.events.forEach((event) => {
+    const key = `${event.bossId}|${event.spawnAt}`;
+    const current = byKey.get(key);
+    if (!current) {
+      byKey.set(key, event);
+      return;
+    }
+
+    changed = true;
+    const currentHasLoot = Boolean(current.realGuildId || current.realBlock);
+    const eventHasLoot = Boolean(event.realGuildId || event.realBlock);
+    if (!currentHasLoot && eventHasLoot) {
+      byKey.set(key, event);
+    }
+  });
+
+  if (changed) {
+    state.events = [...byKey.values()].sort((a, b) => a.spawnAt.localeCompare(b.spawnAt));
+  }
+
+  return changed;
+}
+
+function ensureEventsAt(state, bossIds, spawnAt, note) {
+  let changed = false;
+  const existingKeys = new Set(state.events.map((event) => `${event.bossId}|${event.spawnAt}`));
+
+  bossIds.forEach((bossId) => {
+    if (existingKeys.has(`${bossId}|${spawnAt}`)) return;
+    const boss = getBoss(state, bossId);
+    if (!boss) return;
+    state.events.push({
+      id: `event-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      spawnAt,
+      bossId,
+      suggestedBlock: "",
+      suggestedGuildId: "",
+      realBlock: "",
+      realGuildId: "",
+      status: "pending",
+      counted: true,
+      note,
+    });
+    changed = true;
+  });
 
   return changed;
 }
