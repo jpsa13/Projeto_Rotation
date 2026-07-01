@@ -423,6 +423,15 @@ function bossWeight(state, bossId) {
   return Number(getBoss(state, bossId)?.weight || 0);
 }
 
+function bossOrderIndex(bossId) {
+  const index = bossSeed.findIndex(([id]) => id === bossId);
+  return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+}
+
+function bossGroup(state, bossId) {
+  return getBoss(state, bossId)?.group || "";
+}
+
 function blockSlotsForBatch(scores, count) {
   const behind = chooseBlock(scores);
   const other = otherBlock(behind);
@@ -444,9 +453,38 @@ function blockSlotsForBatch(scores, count) {
   return slots;
 }
 
-function assignPendingBatch(state, pendingEvents, scores) {
-  const ordered = [...pendingEvents].sort((a, b) => bossWeight(state, b.bossId) - bossWeight(state, a.bossId));
-  const slots = blockSlotsForBatch(scores, ordered.length);
+function previousGroupSlots(state, group, spawnAt, count) {
+  const previousBySpawn = new Map();
+
+  state.events
+    .filter((event) => event.spawnAt < spawnAt && bossGroup(state, event.bossId) === group)
+    .forEach((event) => {
+      if (!previousBySpawn.has(event.spawnAt)) previousBySpawn.set(event.spawnAt, []);
+      previousBySpawn.get(event.spawnAt).push(event);
+    });
+
+  const previousSpawn = [...previousBySpawn.keys()].sort().pop();
+  if (!previousSpawn) return null;
+
+  const previousEvents = previousBySpawn
+    .get(previousSpawn)
+    .sort((a, b) => bossOrderIndex(a.bossId) - bossOrderIndex(b.bossId));
+
+  if (previousEvents.length !== count) return null;
+
+  const slots = previousEvents.map((event) => event.realBlock || event.suggestedBlock);
+  return slots.every((block) => block === "BR" || block === "INT") ? slots : null;
+}
+
+function invertedPreviousSlots(state, group, spawnAt, count) {
+  const previous = previousGroupSlots(state, group, spawnAt, count);
+  return previous ? previous.map(otherBlock) : null;
+}
+
+function assignPendingGroupBatch(state, pendingEvents, scores, spawnAt) {
+  const ordered = [...pendingEvents].sort((a, b) => bossOrderIndex(a.bossId) - bossOrderIndex(b.bossId));
+  const group = bossGroup(state, ordered[0]?.bossId);
+  const slots = invertedPreviousSlots(state, group, spawnAt, ordered.length) || blockSlotsForBatch(scores, ordered.length);
 
   ordered.forEach((event, index) => {
     const boss = getBoss(state, event.bossId);
@@ -456,6 +494,19 @@ function assignPendingBatch(state, pendingEvents, scores) {
     event.suggestedGuildId = guild?.id || "";
     if (guild) addScore(scores, block, guild.id, effectiveWeight(boss?.weight || 0, guild.id));
   });
+}
+
+function assignPendingBatch(state, pendingEvents, scores, spawnAt) {
+  const byGroup = new Map();
+  pendingEvents.forEach((event) => {
+    const group = bossGroup(state, event.bossId);
+    if (!byGroup.has(group)) byGroup.set(group, []);
+    byGroup.get(group).push(event);
+  });
+
+  [...byGroup.values()]
+    .sort((a, b) => bossOrderIndex(a[0].bossId) - bossOrderIndex(b[0].bossId))
+    .forEach((groupEvents) => assignPendingGroupBatch(state, groupEvents, scores, spawnAt));
 }
 
 function serverDailyAt(time) {
@@ -522,10 +573,10 @@ function recalculatePendingSuggestions(state) {
         if (event.counted && event.realBlock && event.realGuildId && ["confirmed", "corrected", "ffa"].includes(event.status)) {
           addScore(scores, event.realBlock, event.realGuildId, effectiveWeight(weight, event.realGuildId));
         }
-      });
+    });
 
     const pending = batch.filter((event) => event.status === "pending");
-    if (pending.length) assignPendingBatch(state, pending, scores);
+    if (pending.length) assignPendingBatch(state, pending, scores, spawnAt);
   }
 }
 
