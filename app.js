@@ -41,12 +41,14 @@ async function adminLogin() {
   adminToken = data.token;
   localStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
   applyAdminMode();
+  render();
 }
 
 function clearAdmin() {
   adminToken = "";
   localStorage.removeItem(ADMIN_TOKEN_KEY);
   applyAdminMode();
+  render();
 }
 
 function activeTabId() {
@@ -446,11 +448,12 @@ function titleCase(value) {
 }
 
 function render() {
-  renderSummary();
-  renderNext();
-  renderEvents();
-  renderBosses();
-  renderGuilds();
+  const tabId = activeTabId();
+  if (tabId === "summary") renderSummary();
+  if (tabId === "next") renderNext();
+  if (tabId === "events") renderEvents();
+  if (tabId === "bosses") renderBosses();
+  if (tabId === "guilds") renderGuilds();
 }
 
 function applyTheme(theme) {
@@ -471,6 +474,7 @@ function applyAdminMode() {
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     setActiveTab(tab.dataset.tab);
+    render();
   });
 });
 
