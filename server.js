@@ -27,8 +27,6 @@ const dungeonBossIds = new Set(["executor", "grand-forge", "rhamnousia"]);
 const hiddenBossGroups = new Set(["Launch Base Boss Group", "Defense Facility Boss Group"]);
 const guildScoreMultipliers = {
   blood: 0.92,
-  mcdonalds: 1,
-  vendetta: 1.08,
 };
 const historicalCorrections = [
   {
