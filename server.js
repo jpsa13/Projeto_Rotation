@@ -20,7 +20,8 @@ const battleground1SundaySpawn = "2026-06-28T16:00:00.000Z"; // 2026-06-28 13:00
 const groupDSundaySpawn = "2026-06-28T15:13:00.000Z"; // 2026-06-28 12:13 BRT.
 const groupDNextSpawn = "2026-06-30T09:13:00.000Z"; // 2026-06-30 06:13 BRT.
 const groupENextSpawn = "2026-06-30T05:59:00.000Z"; // 2026-06-30 02:59 BRT.
-const dungeonNextSpawn = "2026-06-30T03:00:00.000Z"; // 2026-06-30 00:00 BRT.
+const dungeonWeeklyDays = [1, 6]; // Monday and Saturday.
+const dungeonFixedTime = "23:59";
 const groupDBossIds = new Set(["mecha-tamac", "infernal-larva", "locust", "mecha-tweezer", "vastus"]);
 const groupEBossIds = new Set(["mecha-warbeast", "mecha-ertelem", "mecha-devourer", "hook"]);
 const dungeonBossIds = new Set(["executor", "grand-forge", "rhamnousia"]);
@@ -100,9 +101,9 @@ const bossSeed = [
   ["mecha-lapis", "Mecha Lapis", "Atlas Boss Group", 57, "interval", null, 60, 110, true, atlasInitialSpawn],
   ["mecha-silex", "Mecha Silex", "Atlas Boss Group", 59, "interval", null, 60, 112, true, atlasInitialSpawn],
   ["mecha-nyoka", "Mecha Nyoka", "Atlas Boss Group", 61, "interval", null, 60, 114, true, atlasInitialSpawn],
-  ["executor", "Executor", "Dungeon Boss", 84, "interval", null, 48, 118, true, dungeonNextSpawn],
-  ["grand-forge", "Grand Forge", "Dungeon Boss", 96, "interval", null, 48, 132, true, dungeonNextSpawn],
-  ["rhamnousia", "Rhamnousia", "Dungeon Boss", 109, "interval", null, 48, 150, true, dungeonNextSpawn],
+  ["executor", "Executor", "Dungeon Boss", 84, "weekly", dungeonFixedTime, null, 118, true, null, dungeonWeeklyDays],
+  ["grand-forge", "Grand Forge", "Dungeon Boss", 96, "weekly", dungeonFixedTime, null, 132, true, null, dungeonWeeklyDays],
+  ["rhamnousia", "Rhamnousia", "Dungeon Boss", 109, "weekly", dungeonFixedTime, null, 150, true, null, dungeonWeeklyDays],
   ["titan", "Titan", "Launch Base Boss Group", 92, "interval", null, 72, 145, false, null],
   ["dogon", "Dogon", "Launch Base Boss Group", 94, "interval", null, 72, 147, false, null],
   ["brontes", "Brontes", "Launch Base Boss Group", 96, "interval", null, 72, 149, false, null],
@@ -123,7 +124,7 @@ const guildSeed = [
 
 function seedState() {
   return {
-    bosses: bossSeed.map(([id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt]) => ({
+    bosses: bossSeed.map(([id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt, weeklyDays]) => ({
       id,
       name,
       group,
@@ -134,6 +135,7 @@ function seedState() {
       weight,
       active,
       initialNextAt,
+      weeklyDays,
     })),
     guilds: structuredClone(guildSeed),
     events: [],
@@ -162,18 +164,18 @@ function writeState(state) {
 function migrateState(state) {
   let changed = false;
 
-  bossSeed.forEach(([id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt]) => {
+  bossSeed.forEach(([id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt, weeklyDays]) => {
     const existing = state.bosses.find((boss) => boss.id === id);
     if (!existing) {
-      state.bosses.push({ id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt });
+      state.bosses.push({ id, name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt, weeklyDays });
       changed = true;
       return;
     }
 
     if (groupEBossIds.has(id) || dungeonBossIds.has(id)) {
-      const patch = { name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt };
+      const patch = { name, group, level, spawnType, fixedTime, respawnHours, weight, active, initialNextAt, weeklyDays };
       Object.entries(patch).forEach(([key, value]) => {
-        if (existing[key] !== value) {
+        if (JSON.stringify(existing[key]) !== JSON.stringify(value)) {
           existing[key] = value;
           changed = true;
         }
@@ -189,9 +191,7 @@ function migrateState(state) {
   if (ensureEventsAt(state, [...groupEBossIds], groupENextSpawn, "Auto-added Group E 48h spawn")) {
     changed = true;
   }
-  if (ensureEventsAt(state, [...dungeonBossIds], dungeonNextSpawn, "Auto-added Dungeon Boss 48h spawn")) {
-    changed = true;
-  }
+  changed = removeInvalidDungeonEvents(state) || changed;
 
   state.bosses.forEach((boss) => {
     if (!groupDBossIds.has(boss.id)) return;
@@ -330,6 +330,16 @@ function ensureEventsAt(state, bossIds, spawnAt, note) {
   });
 
   return changed;
+}
+
+function removeInvalidDungeonEvents(state) {
+  const before = state.events.length;
+  state.events = state.events.filter((event) => {
+    if (!dungeonBossIds.has(event.bossId)) return true;
+    if (event.status !== "pending" || event.realGuildId || event.realBlock) return true;
+    return event.note !== "Auto-added Dungeon Boss 48h spawn";
+  });
+  return state.events.length !== before;
 }
 
 function publicBoss(boss) {
@@ -524,6 +534,28 @@ function serverDailyAt(time) {
   return candidate;
 }
 
+function serverWeeklyAt(time, weeklyDays = []) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const now = new Date();
+  const serverNow = new Date(now.getTime() - SERVER_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+
+  for (let dayOffset = 0; dayOffset < 14; dayOffset += 1) {
+    const candidate = new Date(Date.UTC(
+      serverNow.getUTCFullYear(),
+      serverNow.getUTCMonth(),
+      serverNow.getUTCDate() + dayOffset,
+      hours + SERVER_UTC_OFFSET_HOURS,
+      minutes,
+      0,
+      0
+    ));
+    const candidateServerDate = new Date(candidate.getTime() - SERVER_UTC_OFFSET_HOURS * 60 * 60 * 1000);
+    if (weeklyDays.includes(candidateServerDate.getUTCDay()) && candidate > now) return candidate;
+  }
+
+  return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+}
+
 function addNextCandidate(state, candidates, existingKeys, latestByBoss, boss) {
   let next;
   const now = new Date();
@@ -531,6 +563,16 @@ function addNextCandidate(state, candidates, existingKeys, latestByBoss, boss) {
     next = latestByBoss[boss.id]
       ? new Date(new Date(latestByBoss[boss.id]).getTime() + 24 * 60 * 60 * 1000)
       : serverDailyAt(boss.fixedTime || "00:00");
+  } else if (boss.spawnType === "weekly") {
+    if (latestByBoss[boss.id]) {
+      next = new Date(new Date(latestByBoss[boss.id]).getTime() + 24 * 60 * 60 * 1000);
+      const weeklyDays = boss.weeklyDays || [];
+      while (!weeklyDays.includes(new Date(next.getTime() - SERVER_UTC_OFFSET_HOURS * 60 * 60 * 1000).getUTCDay())) {
+        next = new Date(next.getTime() + 24 * 60 * 60 * 1000);
+      }
+    } else {
+      next = serverWeeklyAt(boss.fixedTime || "00:00", boss.weeklyDays || []);
+    }
   } else if (latestByBoss[boss.id]) {
     next = new Date(new Date(latestByBoss[boss.id]).getTime() + Number(boss.respawnHours || 0) * 60 * 60 * 1000);
   } else if (boss.initialNextAt) {
@@ -545,8 +587,14 @@ function addNextCandidate(state, candidates, existingKeys, latestByBoss, boss) {
   }
 
   while (existingKeys.has(`${boss.id}|${next.toISOString()}`)) {
-    const stepHours = boss.spawnType === "fixed" ? 24 : Number(boss.respawnHours || 0);
+    const stepHours = boss.spawnType === "fixed" || boss.spawnType === "weekly" ? 24 : Number(boss.respawnHours || 0);
     next = new Date(next.getTime() + stepHours * 60 * 60 * 1000);
+    if (boss.spawnType === "weekly") {
+      const weeklyDays = boss.weeklyDays || [];
+      while (!weeklyDays.includes(new Date(next.getTime() - SERVER_UTC_OFFSET_HOURS * 60 * 60 * 1000).getUTCDay())) {
+        next = new Date(next.getTime() + 24 * 60 * 60 * 1000);
+      }
+    }
   }
   candidates.push({ boss, spawnAt: next.toISOString() });
 }
